@@ -1,0 +1,10 @@
+iosxe:
+  device_groups:
+    - name: SERVICE_102
+      devices:
+        - LEAF1
+        - LEAF2
+      templates: [service_l2]
+      variables:
+        vlan_id: 102
+        mcast_group: 225.1.1.2

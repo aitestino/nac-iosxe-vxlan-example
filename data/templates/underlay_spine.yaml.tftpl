@@ -1,0 +1,49 @@
+# Underlay Spine Template
+#
+# Variables
+# - bgp_asn: The BGP AS number
+# - anycast_ip: The IP address of the anycast IP address
+# - msdp_peer_ip: The IP address of the MSDP peer
+
+interfaces:
+  loopbacks:
+    - id: 100
+      interface_groups: [loopback]
+      description: Anycast RP
+      ipv4:
+        address: ${anycast_ip}
+        address_mask: 255.255.255.255
+  ethernets:
+%{ for index, device in [for d in GLOBAL.devices : d if contains(d.device_groups, "LEAFS")] }
+    - type: GigabitEthernet
+      id: 1/0/${index + 1}
+      interface_groups: [fabric]
+%{ endfor }
+msdp:
+  originator_id_interface_type: Loopback
+  originator_id_interface_id: 0
+  peers:
+%{ for index, device in [for d in GLOBAL.devices : d if contains(d.device_groups, "SPINES") && d.variables.lo0_ip != lo0_ip] }
+    - host: ${device.variables.lo0_ip}
+      connect_source_interface_type: Loopback
+      connect_source_interface_id: 0
+%{ endfor }
+routing:
+  bgp:
+    as_number: ${bgp_asn}
+    neighbors:
+%{ for index, device in [for d in GLOBAL.devices : d if contains(d.device_groups, "LEAFS")] }
+      - ip: ${device.variables.lo0_ip}
+        remote_as: ${bgp_asn}
+        update_source_interface_type: Loopback
+        update_source_interface_id: 0
+%{ endfor }
+    address_family:
+      l2vpn_evpn:
+        neighbors:
+%{ for index, device in [for d in GLOBAL.devices : d if contains(d.device_groups, "LEAFS")] }
+          - ip: ${device.variables.lo0_ip}
+            activate: true
+            send_community: both
+            route_reflector_client: true
+%{ endfor }

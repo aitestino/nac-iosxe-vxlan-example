@@ -1,0 +1,12 @@
+iosxe:
+  device_groups:
+    - name: SERVICE_BLUE
+      devices:
+        - LEAF1
+        - LEAF2
+      templates: [service_l3]
+      variables:
+        name: BLUE
+        core_vlan_id: 1010
+        vlans:
+          - id: 1011

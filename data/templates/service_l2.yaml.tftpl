@@ -1,0 +1,30 @@
+# Service L2 Template
+#
+# Variables
+# - vlan_id: The VLAN ID
+# - mcast_group: The multicast group, can be empty to use ingress replication
+
+vlan:
+  vlans:
+    - id: ${vlan_id}
+      evpn_instance: ${vlan_id}
+      evpn_instance_vni: 10${vlan_id}
+      name: L2_${vlan_id}
+interfaces:
+  nves:
+    - id: 1
+      vnis:
+        - vni_from: 10${vlan_id}
+%{ if mcast_group == "" }
+          ingress_replication: true
+%{ else }
+          ipv4_multicast_group: ${mcast_group}
+%{ endif }
+evpn:
+  instances:
+    - number: ${vlan_id}
+      vlan_based:
+%{ if mcast_group == "" }
+        replication_type: ingress
+%{ endif }
+        encapsulation: vxlan

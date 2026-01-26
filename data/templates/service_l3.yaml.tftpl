@@ -1,0 +1,85 @@
+# Service L3 Template
+#
+# Variables
+# - bgp_asn: The BGP AS number
+# - name: The VRF name
+# - core_vlan_id: The core VLAN ID
+# - vlans: The list of VLANs
+#     - id: The VLAN ID
+
+vrfs:
+  - name: ${name}
+    route_distinguisher: "${bgp_asn}:${core_vlan_id}"
+    address_family_ipv4:
+      import_route_targets: ["${bgp_asn}:${core_vlan_id}"]
+      import_route_targets_stitching: ["${bgp_asn}:${core_vlan_id}"]
+      export_route_targets: ["${bgp_asn}:${core_vlan_id}"]
+      export_route_targets_stitching: ["${bgp_asn}:${core_vlan_id}"]
+    address_family_ipv6:
+      import_route_targets: ["${bgp_asn}:${core_vlan_id}"]
+      import_route_targets_stitching: ["${bgp_asn}:${core_vlan_id}"]
+      export_route_targets: ["${bgp_asn}:${core_vlan_id}"]
+      export_route_targets_stitching: ["${bgp_asn}:${core_vlan_id}"]
+routing:
+  bgp:
+    as_number: ${bgp_asn}
+    address_family:
+      ipv4_unicast:
+        vrfs:
+          - vrf: ${name}
+            advertise_l2vpn_evpn: true
+            redistribute:
+              connected: true
+              static: true
+      ipv6_unicast:
+        vrfs:
+          - vrf: ${name}
+            advertise_l2vpn_evpn: true
+            redistribute:
+              connected: true
+              static: true
+vlan:
+  vlans:
+    - id: ${core_vlan_id}
+      vni: 20${core_vlan_id}
+      name: ${name}
+%{ for vlan in vlans }
+    - id: ${vlan.id}
+      evpn_instance: ${vlan.id}
+      evpn_instance_vni: 10${vlan.id}
+      name: ${name}_${vlan.id}
+%{ endfor }
+interfaces:
+  nves:
+    - id: 1
+      vnis:
+%{ for vlan in vlans }
+        - vni_from: 10${vlan.id}
+          ingress_replication: true
+%{ endfor }
+      vni_vrfs:
+        - vni_from: 20${core_vlan_id}
+          vrf: ${name}
+  vlans:
+%{ for vlan in vlans }
+    - id: ${vlan.id}
+      vrf_forwarding: ${name}
+      ipv4:
+        address: 172.17.1.1
+        address_mask: 255.255.255.0
+      autostate: false
+%{ endfor }
+    - id: ${core_vlan_id}
+      vrf_forwarding: ${name}
+      ipv4:
+        unnumbered_interface_type: Loopback
+        unnumbered_interface_id: 1
+      autostate: false
+evpn:
+  instances:
+%{ for vlan in vlans }
+    - number: ${vlan.id}
+      vlan_based:
+        replication_type: ingress
+        encapsulation: vxlan
+%{ endfor }
