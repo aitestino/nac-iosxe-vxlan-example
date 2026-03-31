@@ -128,80 +128,19 @@ Both are valid. They serve different audiences and operational models:
 
 ### Physical Topology Diagram
 
-```
-                ┌──────────┐           ┌──────────┐
-                │  SPINE1  │           │  SPINE2  │
-                │ Lo0: .1  │───────────│ Lo0: .2  │
-                │Lo100: RP │   MSDP    │Lo100: RP │
-                │ Anycast  │   Peer    │ Anycast  │
-                │10.1.101.1│           │10.1.101.1│
-                └─┬──────┬─┘           └─┬──────┬─┘
-                  │      │               │      │
-         ┌────────┘      └───────┬───────┘      └────────┐
-         │                       │                        │
-    ┌────┴─────┐                 │                 ┌──────┴───┐
-    │  LEAF1   │                 │                 │  LEAF2   │
-    │ (VTEP)   │                 │                 │ (VTEP)   │
-    │ Lo0: .3  │                 │                 │ Lo0: .4  │
-    │ Lo1: VTEP│         (iBGP EVPN via           │ Lo1: VTEP│
-    │10.1.200.1│          route-reflector)         │10.1.200.2│
-    └──────────┘                                   └──────────┘
-
-    Legend:
-      .X   = Loopback0 last octet (10.1.100.X/32) — OSPF/BGP RID
-      Lo1  = Dedicated VTEP loopback (10.1.200.X/32) — NVE source
-      Lo100= Anycast RP (10.1.101.1/32) — shared on both spines
-      ───  = OSPF P2P + PIM sparse-mode underlay links (IP unnumbered)
-```
+![Physical Topology](images/physical-topology.png)
 
 ### Underlay Topology (OSPF + PIM)
 
 All 4 devices participate in OSPF Process 1, Area 0 with PIM sparse-mode on every fabric interface. The spines provide Anycast RP via a shared Loopback 100 address, synchronized through MSDP:
 
-```
-            IP Unnumbered (Lo0)
-  SPINE1 ──────────────────── SPINE2
-  [Lo100: Anycast RP]  MSDP  [Lo100: Anycast RP]
-  10.1.101.1  ←──── peer ────→ 10.1.101.1
-    │ ╲                          ╱ │
-    │  GigabitEthernet1/0/1     │  │
-    │   ╲                  ╱    │  │
-    │    LEAF1            ╱     │  │
-    │    │                │     │  │
-    │  GigabitEthernet1/0/2     │  │
-    │             ╲        ╱    │  │
-    │              LEAF2        │  │
-    │                           │  │
-    └── All links: OSPF P2P + PIM sparse-mode
-        All links: IP unnumbered to Loopback 0
-        All devices: pim.rp_address → 10.1.101.1
-```
+![Underlay Topology](images/underlay-topology.png)
 
 ### Overlay Topology (iBGP EVPN)
 
 The overlay uses a **route-reflector** design — spines are iBGP route-reflectors, leaves peer only with spines (not with each other):
 
-```
-    SPINE1 ─────────────── SPINE2
-   (10.1.100.1)           (10.1.100.2)
-   Route-Reflector         Route-Reflector
-      │  ╲              ╱  │
-      │   ╲            ╱   │
-      │    ╲          ╱    │
-      │     ╲        ╱     │
-      │      ╲      ╱      │
-      │       ╲    ╱       │
-    LEAF1                LEAF2
-   (10.1.100.3)         (10.1.100.4)
-   VTEP: 10.1.200.1     VTEP: 10.1.200.2
-
-   iBGP (AS 65000)
-   L2VPN EVPN address family
-   Spines: route-reflector-client for leaves
-   Update-source: Loopback 0
-   NVE source: Loopback 1 (dedicated VTEP IP)
-   Send-community: both
-```
+![Overlay Topology](images/overlay-topology.png)
 
 ### Device Inventory
 
